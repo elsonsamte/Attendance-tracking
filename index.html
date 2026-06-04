@@ -164,11 +164,11 @@
       <select id="emp" onchange="onEmpChange()">
         <option value="">— Select your name —</option>
         <option value="Elson Samte" data-branch="Head Office">Elson Samte</option>
-        <option value="Lian Samte"  data-branch="Branch Office">Lian Samte</option>
+        <option value="Lian Samte"  data-branch="Head Office">Lian Samte</option>
         <option value="Mawi"        data-branch="Head Office">Mawi</option>
-        <option value="Siamboi"     data-branch="KAM Finance">Siamboi</option>
-        <option value="Michael"     data-branch="KAM Finance">Michael</option>
-        <option value="Mumung"      data-branch="DK Enterprise">Mumung</option>
+        <option value="Siamboi"     data-branch="Head Office">Siamboi</option>
+        <option value="Michael"     data-branch="Head Office">Michael</option>
+        <option value="Mumung"      data-branch="Head Office">Mumung</option>
       </select>
     </div>
 
@@ -226,10 +226,7 @@
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbwu5IpKd8SNR7zgnLPs1flOcKQNsnuVq4C7R2cbz5lf6rZ5b20CH69meHePJ6ON_eDgEg/exec";
 
 const BRANCHES = [
-  { name: "Head Office",   lat: 24.328671673730103, lng: 93.69275469741875, radius: 100 },
-  { name: "Branch Office", lat: 24.328671673730103, lng: 93.69275469741875, radius: 100 },
-  { name: "KAM Finance",   lat: 24.328671673730103, lng: 93.69275469741875, radius: 100 },
-  { name: "DK Enterprise", lat: 24.328671673730103, lng: 93.69275469741875, radius: 100 },
+  { name: "Office", lat: 24.328671673730103, lng: 93.69275469741875, radius: 50 },
 ];
 
 const WORK_START = 9;   // 9:00 AM
@@ -313,13 +310,11 @@ function getLocation() {
       }
 
       if (!matched) {
-        setLocState("fail", "Location not recognised", "You don't appear to be at any registered office. Make sure you are inside the building and try again.");
-      } else if (assigned && matched.name !== assigned) {
-        setLocState("fail", `Wrong branch detected`, `You are at ${matched.name} but assigned to ${assigned}. Please check in from your correct office.`);
+        setLocState("fail", "Location not recognised", "You don't appear to be at the office. Make sure you are inside the building and try again.");
       } else {
-        detectedBranch   = matched.name;
+        detectedBranch   = assigned || matched.name;
         locationVerified = true;
-        setLocState("ok", matched.name, "");
+        setLocState("ok", detectedBranch, "");
       }
 
       btn.disabled = false; btn.textContent = "📡 Detect my location";
