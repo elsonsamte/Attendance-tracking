@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Attendance Check-In</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f4f6f4;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .app { width: 100%; max-width: 420px; }
+
+  .header { text-align: center; margin-bottom: 1.75rem; }
+  .company { font-size: 12px; font-weight: 600; color: #5F5E5A; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.4rem; }
+  .clock { font-size: 36px; font-weight: 300; color: #1D9E75; letter-spacing: -1px; }
+  .dateline { font-size: 13px; color: #888780; margin-top: 2px; }
+
+  .card {
+    background: #fff;
+    border: 1px solid #E8EAE6;
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 0.875rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .card-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #888780;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+
+  select {
+    width: 100%;
+    font-size: 15px;
+    padding: 10px 12px;
+    border: 1px solid #D3D1C7;
+    border-radius: 8px;
+    background: #F9FAF8;
+    color: #2C2C2A;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23888' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    cursor: pointer;
+  }
+
+  select:focus { outline: 2px solid #1D9E75; outline-offset: 1px; border-color: #1D9E75; }
+
+  .type-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .type-btn {
+    padding: 14px 8px;
+    border: 1.5px solid #D3D1C7;
+    border-radius: 10px;
+    background: #F9FAF8;
+    color: #5F5E5A;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+  }
+  .type-btn .icon { font-size: 22px; display: block; margin-bottom: 5px; }
+  .type-btn:hover { background: #F0F4EE; }
+  .type-btn.active-in  { background: #EAF3DE; border-color: #639922; color: #3B6D11; }
+  .type-btn.active-out { background: #FAECE7; border-color: #D85A30; color: #712B13; }
+
+  .loc-row { display: flex; align-items: center; gap: 10px; padding: 11px 12px; background: #F9FAF8; border: 1px solid #E8EAE6; border-radius: 8px; }
+  .loc-icon { font-size: 18px; }
+  .loc-text { flex: 1; font-size: 13px; color: #5F5E5A; }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+  .badge-pending  { background: #FAEEDA; color: #854F0B; }
+  .badge-ok       { background: #EAF3DE; color: #3B6D11; }
+  .badge-fail     { background: #FCEBEB; color: #A32D2D; }
+
+  .detect-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid #D3D1C7;
+    border-radius: 8px;
+    background: #F9FAF8;
+    font-size: 13px;
+    font-weight: 500;
+    color: #3B6D11;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .detect-btn:hover { background: #EAF3DE; }
+  .detect-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .error-msg { font-size: 12px; color: #A32D2D; margin-top: 8px; line-height: 1.4; display: none; }
+
+  .submit-btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.01em;
+  }
+  .submit-btn:disabled { background: #E8EAE6; color: #B4B2A9; cursor: not-allowed; }
+  .submit-btn.ready    { background: #1D9E75; color: #fff; box-shadow: 0 2px 8px rgba(29,158,117,0.25); }
+  .submit-btn.ready:hover  { background: #0F6E56; }
+  .submit-btn.loading  { background: #9FE1CB; color: #085041; cursor: wait; }
+
+  .note { font-size: 11px; color: #B4B2A9; text-align: center; margin-top: 0.75rem; line-height: 1.5; }
+
+  /* Success screen */
+  .success { display: none; text-align: center; padding: 2.5rem 1rem; }
+  .success-icon { font-size: 56px; margin-bottom: 1rem; }
+  .success-title { font-size: 22px; font-weight: 600; color: #2C2C2A; margin-bottom: 0.4rem; }
+  .success-detail { font-size: 14px; color: #5F5E5A; margin-bottom: 0.3rem; }
+  .success-status { display: inline-block; font-size: 13px; font-weight: 600; padding: 4px 14px; border-radius: 20px; margin: 0.5rem 0 1.5rem; }
+  .status-ontime  { background: #EAF3DE; color: #3B6D11; }
+  .status-late    { background: #FCEBEB; color: #A32D2D; }
+  .status-other   { background: #FAEEDA; color: #854F0B; }
+
+  .done-btn {
+    padding: 12px 32px;
+    border: 1.5px solid #D3D1C7;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    color: #5F5E5A;
+    cursor: pointer;
+  }
+  .done-btn:hover { background: #F0F4EE; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── MAIN SCREEN ── -->
+  <div id="main">
+
+    <div class="header">
+      <div class="company">Attendance · Check-In</div>
+      <div class="clock" id="clock">--:--</div>
+      <div class="dateline" id="dateline"></div>
+    </div>
+
+    <!-- Name -->
+    <div class="card">
+      <div class="card-label">Your name</div>
+      <select id="emp" onchange="onEmpChange()">
+        <option value="">— Select your name —</option>
+        <option value="Elson Samte" data-branch="Head Office">Elson Samte</option>
+        <option value="Lian Samte"  data-branch="Branch Office">Lian Samte</option>
+        <option value="Mawi"        data-branch="Head Office">Mawi</option>
+        <option value="Siamboi"     data-branch="KAM Finance">Siamboi</option>
+        <option value="Michael"     data-branch="KAM Finance">Michael</option>
+        <option value="Mumung"      data-branch="DK Enterprise">Mumung</option>
+      </select>
+    </div>
+
+    <!-- Type -->
+    <div class="card">
+      <div class="card-label">Check in or out?</div>
+      <div class="type-row">
+        <button class="type-btn" id="btn-in" onclick="selectType('IN')">
+          <span class="icon">🟢</span>Check In
+        </button>
+        <button class="type-btn" id="btn-out" onclick="selectType('OUT')">
+          <span class="icon">🔴</span>Check Out
+        </button>
+      </div>
+    </div>
+
+    <!-- Location -->
+    <div class="card">
+      <div class="card-label">Location verification</div>
+      <div class="loc-row">
+        <span class="loc-icon">📍</span>
+        <span class="loc-text" id="loc-text">Tap below to verify your location</span>
+        <span class="badge badge-pending" id="loc-badge">Pending</span>
+      </div>
+      <div class="error-msg" id="loc-error"></div>
+      <button class="detect-btn" id="detect-btn" onclick="getLocation()">
+        📡 Detect my location
+      </button>
+    </div>
+
+    <!-- Submit -->
+    <button class="submit-btn" id="submit-btn" disabled onclick="submitAttendance()">
+      Submit attendance
+    </button>
+    <p class="note">Your GPS location is only used to confirm you are at your assigned office. It is not stored or shared.</p>
+  </div>
+
+  <!-- ── SUCCESS SCREEN ── -->
+  <div class="success" id="success">
+    <div class="success-icon" id="s-icon">✅</div>
+    <div class="success-title" id="s-title">Checked in!</div>
+    <div class="success-detail" id="s-detail"></div>
+    <div class="success-detail" id="s-time"></div>
+    <div class="success-status" id="s-status"></div>
+    <br>
+    <button class="done-btn" onclick="reset()">Done</button>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIGURATION — replace with your real values
+// ─────────────────────────────────────────────────────────────────────────────
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbwu5IpKd8SNR7zgnLPs1flOcKQNsnuVq4C7R2cbz5lf6rZ5b20CH69meHePJ6ON_eDgEg/exec";
+
+const BRANCHES = [
+  { name: "Head Office",   lat: 24.328671673730103, lng: 93.69275469741875, radius: 100 },
+  { name: "Branch Office", lat: 24.328671673730103, lng: 93.69275469741875, radius: 100 },
+  { name: "KAM Finance",   lat: 24.328671673730103, lng: 93.69275469741875, radius: 100 },
+  { name: "DK Enterprise", lat: 24.328671673730103, lng: 93.69275469741875, radius: 100 },
+];
+
+const WORK_START = 9;   // 9:00 AM
+const WORK_END   = 17;  // 5:00 PM
+// ─────────────────────────────────────────────────────────────────────────────
+
+let selectedType     = null;
+let locationVerified = false;
+let detectedBranch   = null;
+
+// Clock
+function updateClock() {
+  const n = new Date();
+  document.getElementById("clock").textContent =
+    n.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  document.getElementById("dateline").textContent =
+    n.toLocaleDateString([], { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// Haversine distance (metres)
+function distance(lat1, lng1, lat2, lng2) {
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (lat2 - lat1) * r, dLng = (lng2 - lng1) * r;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*r) * Math.cos(lat2*r) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function onEmpChange() {
+  // Reset location when employee changes
+  locationVerified = false;
+  detectedBranch   = null;
+  setLocState("pending", "Tap below to verify your location", "");
+  checkReady();
+}
+
+function selectType(t) {
+  selectedType = t;
+  document.getElementById("btn-in").className  = "type-btn" + (t === "IN"  ? " active-in"  : "");
+  document.getElementById("btn-out").className = "type-btn" + (t === "OUT" ? " active-out" : "");
+  checkReady();
+}
+
+function setLocState(state, text, error) {
+  const badge = document.getElementById("loc-badge");
+  const locT  = document.getElementById("loc-text");
+  const err   = document.getElementById("loc-error");
+
+  locT.textContent = text;
+  err.textContent  = error;
+  err.style.display = error ? "block" : "none";
+
+  badge.className = "badge badge-" + (state === "ok" ? "ok" : state === "fail" ? "fail" : "pending");
+  badge.textContent = state === "ok" ? "Verified ✓" : state === "fail" ? "Failed" : "Pending";
+}
+
+function getLocation() {
+  const btn = document.getElementById("detect-btn");
+  btn.disabled = true;
+  btn.textContent = "⏳ Detecting…";
+  locationVerified = false;
+  setLocState("pending", "Detecting your location…", "");
+
+  if (!navigator.geolocation) {
+    setLocState("fail", "Not supported", "Your browser does not support GPS. Try Chrome on Android.");
+    btn.disabled = false; btn.textContent = "📡 Detect my location";
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      const emp      = document.getElementById("emp");
+      const empName  = emp.value;
+      const assigned = emp.options[emp.selectedIndex]?.dataset?.branch;
+
+      let matched = null;
+      for (const b of BRANCHES) {
+        if (distance(lat, lng, b.lat, b.lng) <= b.radius) { matched = b; break; }
+      }
+
+      if (!matched) {
+        setLocState("fail", "Location not recognised", "You don't appear to be at any registered office. Make sure you are inside the building and try again.");
+      } else if (assigned && matched.name !== assigned) {
+        setLocState("fail", `Wrong branch detected`, `You are at ${matched.name} but assigned to ${assigned}. Please check in from your correct office.`);
+      } else {
+        detectedBranch   = matched.name;
+        locationVerified = true;
+        setLocState("ok", matched.name, "");
+      }
+
+      btn.disabled = false; btn.textContent = "📡 Detect my location";
+      checkReady();
+    },
+    err => {
+      const msg = err.code === 1
+        ? "Location access was denied. Please allow location in your browser settings."
+        : "Could not get your location. Make sure you have a GPS signal and try again.";
+      setLocState("fail", "Location error", msg);
+      btn.disabled = false; btn.textContent = "📡 Detect my location";
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+  );
+}
+
+function checkReady() {
+  const emp   = document.getElementById("emp").value;
+  const ready = emp && selectedType && locationVerified;
+  const btn   = document.getElementById("submit-btn");
+  btn.disabled  = !ready;
+  btn.className = ready ? "submit-btn ready" : "submit-btn";
+}
+
+async function submitAttendance() {
+  const emp = document.getElementById("emp").value;
+  const now = new Date();
+  const hour = now.getHours() + now.getMinutes() / 60;
+
+  let status = "On time";
+  if (selectedType === "IN"  && hour > WORK_START + 0.01) status = "Late";
+  if (selectedType === "OUT" && hour < WORK_END   - 0.25) status = "Early leave";
+  if (selectedType === "OUT" && hour > WORK_END   + 0.25) status = "Overtime";
+
+  const payload = {
+    timestamp: now.toISOString(),
+    employee:  emp,
+    branch:    detectedBranch,
+    type:      selectedType,
+    status:    status,
+  };
+
+  const btn = document.getElementById("submit-btn");
+  btn.className   = "submit-btn loading";
+  btn.textContent = "Submitting…";
+  btn.disabled    = true;
+
+  try {
+    await fetch(SHEET_URL, {
+      method: "POST",
+      mode:   "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(payload),
+    });
+  } catch (e) {
+    // no-cors means we can't read the response — if fetch didn't throw, it likely succeeded
+  }
+
+  // Show success screen
+  const typeLabel = selectedType === "IN" ? "Checked in" : "Checked out";
+  document.getElementById("s-icon").textContent  = selectedType === "IN" ? "✅" : "👋";
+  document.getElementById("s-title").textContent = typeLabel + "!";
+  document.getElementById("s-detail").textContent = emp + " · " + detectedBranch;
+  document.getElementById("s-time").textContent  =
+    now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " · " +
+    now.toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" });
+
+  const sBadge = document.getElementById("s-status");
+  sBadge.textContent = status;
+  sBadge.className = "success-status " + (
+    status === "On time"   ? "status-ontime" :
+    status === "Late"      ? "status-late"   : "status-other"
+  );
+
+  document.getElementById("main").style.display    = "none";
+  document.getElementById("success").style.display = "block";
+}
+
+function reset() {
+  selectedType = null; locationVerified = false; detectedBranch = null;
+  document.getElementById("emp").value = "";
+  document.getElementById("btn-in").className  = "type-btn";
+  document.getElementById("btn-out").className = "type-btn";
+  setLocState("pending", "Tap below to verify your location", "");
+  const btn = document.getElementById("submit-btn");
+  btn.disabled = true; btn.className = "submit-btn"; btn.textContent = "Submit attendance";
+  document.getElementById("main").style.display    = "block";
+  document.getElementById("success").style.display = "none";
+}
+</script>
+</body>
+</html>
