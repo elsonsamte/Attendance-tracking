@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Ledger</title>
 <style>
   :root{
@@ -149,10 +150,49 @@
   .footer-note button{background:none;border:none;color:var(--slate);text-decoration:underline;
     cursor:pointer;font-size:11px;padding:0;}
 
-  @media(max-width:600px){
-    thead th:nth-child(3), td:nth-child(3){display:none;}
-    .masthead{flex-direction:column;align-items:flex-start;}
+  @media(max-width:640px){
+    #app{padding:16px 12px 48px;}
+    .masthead{flex-direction:column;align-items:flex-start;gap:4px;}
     .networth{text-align:left;}
+    .networth .amount{font-size:26px;}
+
+    .acct-card{min-width:150px;padding:14px;}
+
+    /* toolbar: stack full-width, touch-friendly */
+    .toolbar{flex-direction:column;align-items:stretch;gap:10px;}
+    .toolbar .filters{flex-direction:column;gap:8px;}
+    .filters select, .filters input, #search-box{width:100%!important;}
+    #add-txn-btn{width:100%;order:-1;}
+
+    select, input[type=text], input[type=date], input[type=number]{
+      font-size:16px;padding:12px 10px; /* 16px prevents iOS auto-zoom on focus */
+    }
+    button{font-size:14px;padding:12px 16px;min-height:44px;}
+
+    /* transaction table -> stacked cards */
+    thead{display:none;}
+    table, tbody, tr, td{display:block;width:100%;}
+    tbody tr{
+      border:1px solid var(--rule);border-radius:8px;margin:10px;padding:12px 14px;
+    }
+    td{border:none!important;padding:5px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+    td::before{
+      content:attr(data-label);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;
+      color:var(--slate);font-weight:500;flex:0 0 auto;
+    }
+    td.amt{font-size:15px;}
+    td.row-actions{justify-content:flex-end;border-top:1px solid var(--rule);margin-top:8px;padding-top:10px;}
+    td.row-actions::before{content:none;}
+    td.row-actions button{padding:8px 12px;font-size:12px;min-height:38px;}
+
+    /* modals become bottom sheets */
+    .overlay{align-items:flex-end;padding:0;}
+    .modal{max-width:100%;width:100%;border-radius:16px 16px 0 0;max-height:92vh;padding:20px 18px 24px;}
+    .type-toggle button{min-height:44px;}
+    .field-row{flex-direction:column;gap:0;}
+    .modal-actions{flex-direction:column-reverse;gap:10px;}
+    .modal-actions .right{flex-direction:column-reverse;width:100%;gap:10px;}
+    .modal-actions .right button, .modal-actions > button{width:100%;}
   }
 </style>
 </head>
@@ -395,11 +435,11 @@
     }
     var sign = t.type==='income' ? '+' : (t.type==='expense' ? '-' : '');
     var row = '<tr>';
-    row += '<td class="num">'+t.date+'</td>';
-    row += '<td>'+acctLabel+'</td>';
-    row += '<td>'+escapeHtml(t.category||'—')+(t.note?'<div class="note">'+escapeHtml(t.note)+'</div>':'')+'</td>';
-    row += '<td><span class="tag '+t.type+'">'+t.type+'</span></td>';
-    row += '<td class="amt num '+t.type+'">'+sign+fmt(t.amount)+'</td>';
+    row += '<td class="num" data-label="Date">'+t.date+'</td>';
+    row += '<td data-label="Account">'+acctLabel+'</td>';
+    row += '<td data-label="Category">'+escapeHtml(t.category||'—')+(t.note?'<div class="note">'+escapeHtml(t.note)+'</div>':'')+'</td>';
+    row += '<td data-label="Type"><span class="tag '+t.type+'">'+t.type+'</span></td>';
+    row += '<td class="amt num '+t.type+'" data-label="Amount">'+sign+fmt(t.amount)+'</td>';
     row += '<td class="row-actions"><button class="ghost" data-edit="'+t.id+'">Edit</button><button class="danger" data-del="'+t.id+'">Delete</button></td>';
     row += '</tr>';
     return row;
