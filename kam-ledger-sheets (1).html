@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ledger</title>
+<style>
+  :root{
+    --bg:#FAF7F0;
+    --paper:#FFFFFF;
+    --ink:#1C1E26;
+    --navy:#142B4B;
+    --gold:#A8791F;
+    --gold-bg:#F4E9D4;
+    --brick:#A63D2F;
+    --brick-bg:#F6E4E0;
+    --slate:#6B7280;
+    --slate-bg:#EDEEEE;
+    --rule:#DDD6C8;
+    --rule-strong:#C9C0AC;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .num{
+    font-family:"SFMono-Regular",Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums;
+    font-feature-settings:"tnum" 1;
+  }
+  .display{
+    font-family:Georgia,"Iowan Old Style","Palatino Linotype",serif;
+  }
+  #app{max-width:1040px;margin:0 auto;padding:28px 20px 64px;}
+
+  /* ---- header ---- */
+  .masthead{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:2px solid var(--navy);
+    padding-bottom:14px;margin-bottom:22px;flex-wrap:wrap;gap:12px;
+  }
+  .masthead h1{
+    font-size:22px;font-weight:normal;letter-spacing:0.04em;
+    text-transform:uppercase;color:var(--navy);margin:0;
+  }
+  .masthead .sub{font-size:12px;color:var(--slate);margin-top:2px;}
+  .networth{text-align:right;}
+  .networth .label{font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--slate);}
+  .networth .amount{font-size:30px;line-height:1.1;}
+  .networth .amount.neg{color:var(--brick);}
+
+  /* ---- account cards ---- */
+  .accounts-row{
+    display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;margin-bottom:22px;
+  }
+  .acct-card{
+    flex:0 0 auto;min-width:168px;background:var(--paper);
+    border:1px solid var(--rule);border-top:3px solid var(--acct-color,var(--navy));
+    border-radius:4px;padding:12px 14px;cursor:pointer;position:relative;
+  }
+  .acct-card.active{box-shadow:0 0 0 2px var(--navy) inset;}
+  .acct-card .name{font-size:13px;font-weight:500;margin-bottom:6px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;}
+  .acct-card .bal{font-size:18px;}
+  .acct-card .bal.neg{color:var(--brick);}
+  .acct-card svg{display:block;margin-top:8px;}
+  .acct-add{
+    flex:0 0 auto;min-width:90px;border:1px dashed var(--rule-strong);border-radius:4px;
+    display:flex;align-items:center;justify-content:center;color:var(--slate);
+    cursor:pointer;font-size:13px;background:transparent;
+  }
+  .acct-add:hover{background:var(--paper);}
+
+  /* ---- toolbar ---- */
+  .toolbar{
+    display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+    margin-bottom:16px;justify-content:space-between;
+  }
+  .toolbar .filters{display:flex;gap:8px;flex-wrap:wrap;}
+  select, input[type=text], input[type=date], input[type=number]{
+    font-family:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--rule-strong);
+    border-radius:4px;background:var(--paper);color:var(--ink);
+  }
+  button{
+    font-family:inherit;font-size:13px;padding:8px 14px;border-radius:4px;
+    border:1px solid var(--navy);background:var(--navy);color:#fff;cursor:pointer;
+  }
+  button.secondary{background:var(--paper);color:var(--navy);}
+  button.ghost{background:transparent;color:var(--slate);border-color:var(--rule-strong);}
+  button.danger{background:var(--paper);color:var(--brick);border-color:var(--brick);}
+  button:hover{opacity:0.88;}
+
+  /* ---- ledger table ---- */
+  .ledger{background:var(--paper);border:1px solid var(--rule);border-radius:4px;overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{
+    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;
+    color:var(--slate);font-weight:500;padding:10px 14px;border-bottom:1px solid var(--rule-strong);
+  }
+  th.amt,td.amt{text-align:right;}
+  tbody tr{border-bottom:1px solid var(--rule);}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:#FCFBF7;}
+  td{padding:10px 14px;vertical-align:top;}
+  .tag{
+    display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:500;
+  }
+  .tag.income{background:var(--gold-bg);color:var(--gold);}
+  .tag.expense{background:var(--brick-bg);color:var(--brick);}
+  .tag.transfer{background:var(--slate-bg);color:var(--slate);}
+  .amt.income{color:var(--gold);}
+  .amt.expense{color:var(--brick);}
+  .amt.transfer{color:var(--slate);}
+  .note{color:var(--slate);font-size:12px;}
+  .row-actions{white-space:nowrap;}
+  .row-actions button{padding:3px 7px;font-size:11px;margin-left:4px;}
+  .empty{padding:40px 20px;text-align:center;color:var(--slate);}
+  .empty .big{font-size:15px;color:var(--ink);margin-bottom:6px;}
+
+  /* ---- modal ---- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(20,43,75,0.35);
+    display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .modal{
+    background:var(--paper);border-radius:6px;padding:24px 26px;width:100%;max-width:420px;
+    max-height:88vh;overflow-y:auto;
+  }
+  .modal h2{font-size:16px;margin:0 0 16px;color:var(--navy);font-weight:500;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;color:var(--slate);margin-bottom:5px;}
+  .field select, .field input{width:100%;}
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;}
+  .type-toggle{display:flex;gap:6px;margin-bottom:14px;}
+  .type-toggle button{flex:1;background:var(--paper);color:var(--slate);border-color:var(--rule-strong);}
+  .type-toggle button.active.income{background:var(--gold-bg);color:var(--gold);border-color:var(--gold);}
+  .type-toggle button.active.expense{background:var(--brick-bg);color:var(--brick);border-color:var(--brick);}
+  .type-toggle button.active.transfer{background:var(--slate-bg);color:var(--slate);border-color:var(--slate);}
+  .modal-actions{display:flex;justify-content:space-between;margin-top:18px;gap:10px;}
+  .modal-actions .right{display:flex;gap:8px;}
+
+  .footer-note{
+    text-align:center;font-size:11px;color:var(--slate);margin-top:24px;
+  }
+  .footer-note button{background:none;border:none;color:var(--slate);text-decoration:underline;
+    cursor:pointer;font-size:11px;padding:0;}
+
+  @media(max-width:600px){
+    thead th:nth-child(3), td:nth-child(3){display:none;}
+    .masthead{flex-direction:column;align-items:flex-start;}
+    .networth{text-align:left;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+  // ---- CONFIG ----
+  // Paste the Google Apps Script Web App URL here (see Code.gs setup instructions).
+  // It looks like: https://script.google.com/macros/s/AKfycb.../exec
+  var WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzChm7gGa8f0ZT5ln2fK-N1Ai93w3YfSAg4z8viW4OCQBDYc7JX3vGRDWpQAbfEJHeG7w/exec';
+
+  var COLORS = ['#142B4B','#A8791F','#3B6D11','#993556','#0C447C','#712B13','#5F5E5A'];
+  var state = {
+    accounts: [],
+    transactions: [],
+    filterAccount: 'all',
+    filterType: 'all',
+    search: '',
+    modal: null, // {kind:'account'|'transaction', editing: id|null}
+    loaded: false,
+    saveError: false
+  };
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function fmt(n){
+    var neg = n < 0;
+    var v = Math.abs(Math.round(n));
+    var s = '₹' + v.toLocaleString('en-IN');
+    return neg ? '-' + s : s;
+  }
+  function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+  function accountColor(idx){ return COLORS[idx % COLORS.length]; }
+
+  function accountBalance(acc){
+    var bal = acc.openingBalance || 0;
+    state.transactions.forEach(function(t){
+      if(t.type==='income' && t.accountId===acc.id) bal += t.amount;
+      else if(t.type==='expense' && t.accountId===acc.id) bal -= t.amount;
+      else if(t.type==='transfer'){
+        if(t.fromAccountId===acc.id) bal -= t.amount;
+        if(t.toAccountId===acc.id) bal += t.amount;
+      }
+    });
+    return bal;
+  }
+
+  function netWorth(){
+    return state.accounts.reduce(function(sum,a){ return sum + accountBalance(a); }, 0);
+  }
+
+  function accountName(id){
+    var a = state.accounts.find(function(x){ return x.id===id; });
+    return a ? a.name : '—';
+  }
+
+  // ---- persistence (Google Sheets via Apps Script web app) ----
+  var configured = WEBAPP_URL.indexOf('PASTE_YOUR') === -1 && WEBAPP_URL.indexOf('http') === 0;
+  var pendingSave = null;
+
+  async function loadData(){
+    if(!configured){
+      state.loaded = true;
+      state.configError = true;
+      render();
+      return;
+    }
+    try{
+      var res = await fetch(WEBAPP_URL);
+      var data = await res.json();
+      state.accounts = (data.accounts||[]).map(function(a){
+        return Object.assign({}, a, { openingBalance: Number(a.openingBalance)||0 });
+      });
+      state.transactions = (data.transactions||[]).map(function(t){
+        return Object.assign({}, t, { amount: Number(t.amount)||0, _ts: Number(t._ts)||0 });
+      });
+      state.saveError = false;
+    }catch(e){
+      state.loadError = true;
+    }
+    state.loaded = true;
+    render();
+  }
+
+  async function saveData(){
+    if(!configured) return;
+    state.syncing = true;
+    renderSyncBadge();
+    try{
+      await fetch(WEBAPP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ accounts: state.accounts, transactions: state.transactions })
+      });
+      state.saveError = false;
+    }catch(e){
+      state.saveError = true;
+    }
+    state.syncing = false;
+    renderSyncBadge();
+  }
+
+  function renderSyncBadge(){
+    var el = document.getElementById('sync-badge');
+    if(!el) return;
+    if(state.syncing) el.textContent = 'Syncing…';
+    else if(state.saveError) el.textContent = 'Sync failed — check connection';
+    else el.textContent = 'Synced to Google Sheets';
+  }
+
+  // ---- sparkline ----
+  function sparkline(acc){
+    var points = [];
+    var running = acc.openingBalance || 0;
+    var sorted = state.transactions
+      .filter(function(t){ return t.accountId===acc.id || t.fromAccountId===acc.id || t.toAccountId===acc.id; })
+      .slice().sort(function(a,b){ return a.date.localeCompare(b.date); });
+    points.push(running);
+    sorted.forEach(function(t){
+      if(t.type==='income' && t.accountId===acc.id) running += t.amount;
+      else if(t.type==='expense' && t.accountId===acc.id) running -= t.amount;
+      else if(t.type==='transfer'){
+        if(t.fromAccountId===acc.id) running -= t.amount;
+        if(t.toAccountId===acc.id) running += t.amount;
+      }
+      points.push(running);
+    });
+    if(points.length < 2) points.push(points[0]);
+    var min = Math.min.apply(null, points), max = Math.max.apply(null, points);
+    var range = (max - min) || 1;
+    var w = 150, h = 28;
+    var step = w / (points.length - 1);
+    var coords = points.map(function(p,i){
+      var x = i*step;
+      var y = h - ((p - min)/range) * h;
+      return x.toFixed(1)+','+y.toFixed(1);
+    }).join(' ');
+    return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'"><polyline points="'+coords+'" fill="none" stroke-width="1.5" /></svg>';
+  }
+
+  // ---- render ----
+  function render(){
+    var app = document.getElementById('app');
+    if(!state.loaded){
+      app.innerHTML = '<div style="padding:60px;text-align:center;color:var(--slate);">Loading ledger…</div>';
+      return;
+    }
+    if(state.configError){
+      app.innerHTML = '<div style="max-width:520px;margin:60px auto;padding:24px;background:var(--paper);border:1px solid var(--rule);border-radius:6px;">'
+        + '<h2 class="display" style="color:var(--navy);margin-top:0;">Almost there</h2>'
+        + '<p style="font-size:14px;line-height:1.6;">This file needs to be connected to your Google Sheet before it can save data. Open the file, find the line near the top of the script that says:</p>'
+        + '<pre style="background:var(--bg);padding:10px;border-radius:4px;font-size:12px;overflow-x:auto;">var WEBAPP_URL = \'PASTE_YOUR_WEB_APP_URL_HERE\';</pre>'
+        + '<p style="font-size:14px;line-height:1.6;">Replace the placeholder with your Apps Script Web App URL, save, and reopen.</p></div>';
+      return;
+    }
+    if(state.loadError){
+      app.innerHTML = '<div style="max-width:520px;margin:60px auto;padding:24px;background:var(--paper);border:1px solid var(--rule);border-radius:6px;text-align:center;">'
+        + '<h2 class="display" style="color:var(--brick);margin-top:0;">Couldn\'t connect</h2>'
+        + '<p style="font-size:14px;line-height:1.6;">Check your internet connection and that the Web App URL is correct and deployed with "Anyone" access.</p>'
+        + '<button id="retry-btn" style="margin-top:8px;">Retry</button></div>';
+      var rb = document.getElementById('retry-btn');
+      if(rb) rb.onclick = function(){ state.loadError=false; state.loaded=false; render(); loadData(); };
+      return;
+    }
+    var nw = netWorth();
+    var html = '';
+
+    html += '<div class="masthead">';
+    html += '<div><h1 class="display">KAM Ledger</h1><div class="sub">Multi-account income &amp; expense tracker</div></div>';
+    html += '<div class="networth"><div class="label">Net position</div><div class="amount display num'+(nw<0?' neg':'')+'">'+fmt(nw)+'</div></div>';
+    html += '</div>';
+
+    // accounts row
+    html += '<div class="accounts-row">';
+    state.accounts.forEach(function(acc, idx){
+      var bal = accountBalance(acc);
+      var color = acc.color || accountColor(idx);
+      var active = state.filterAccount === acc.id;
+      html += '<div class="acct-card'+(active?' active':'')+'" style="--acct-color:'+color+'" data-acct="'+acc.id+'">';
+      html += '<div class="name">'+escapeHtml(acc.name)+'</div>';
+      html += '<div class="bal num'+(bal<0?' neg':'')+'">'+fmt(bal)+'</div>';
+      html += '<div style="color:'+color+'">'+sparkline(acc)+'</div>';
+      html += '</div>';
+    });
+    html += '<div class="acct-add" id="add-account-btn">+ Account</div>';
+    html += '</div>';
+
+    // toolbar
+    html += '<div class="toolbar">';
+    html += '<div class="filters">';
+    html += '<select id="filter-account"><option value="all">All accounts</option>';
+    state.accounts.forEach(function(a){
+      html += '<option value="'+a.id+'"'+(state.filterAccount===a.id?' selected':'')+'>'+escapeHtml(a.name)+'</option>';
+    });
+    html += '</select>';
+    html += '<select id="filter-type">';
+    ['all','income','expense','transfer'].forEach(function(t){
+      html += '<option value="'+t+'"'+(state.filterType===t?' selected':'')+'>'+(t==='all'?'All types':t.charAt(0).toUpperCase()+t.slice(1))+'</option>';
+    });
+    html += '</select>';
+    html += '<input type="text" id="search-box" placeholder="Search notes, category…" value="'+escapeAttr(state.search)+'" style="width:180px">';
+    html += '</div>';
+    html += '<button id="add-txn-btn"'+(state.accounts.length===0?' disabled title="Add an account first"':'')+'>+ Add transaction</button>';
+    html += '</div>';
+
+    // ledger
+    html += '<div class="ledger">';
+    if(state.accounts.length===0){
+      html += '<div class="empty"><div class="big">No accounts yet</div>Add your first account — DK Enterprise, KAM Realty, KAM Finance, or any other — to start logging transactions.</div>';
+    } else {
+      var rows = getFilteredTransactions();
+      if(rows.length===0){
+        html += '<div class="empty"><div class="big">No transactions match</div>Try clearing filters or add your first entry.</div>';
+      } else {
+        html += '<table><thead><tr><th>Date</th><th>Account</th><th>Category</th><th>Type</th><th class="amt">Amount</th><th></th></tr></thead><tbody>';
+        rows.forEach(function(t){
+          html += renderRow(t);
+        });
+        html += '</tbody></table>';
+      }
+    }
+    html += '</div>';
+
+    html += '<div class="footer-note"><span id="sync-badge">Synced to Google Sheets</span> · <button id="reset-btn">Clear all data</button></div>';
+
+    app.innerHTML = html;
+    attachHandlers();
+
+    if(state.modal){ renderModal(); }
+  }
+
+  function renderRow(t){
+    var acctLabel;
+    if(t.type==='transfer'){
+      acctLabel = escapeHtml(accountName(t.fromAccountId)) + ' → ' + escapeHtml(accountName(t.toAccountId));
+    } else {
+      acctLabel = escapeHtml(accountName(t.accountId));
+    }
+    var sign = t.type==='income' ? '+' : (t.type==='expense' ? '-' : '');
+    var row = '<tr>';
+    row += '<td class="num">'+t.date+'</td>';
+    row += '<td>'+acctLabel+'</td>';
+    row += '<td>'+escapeHtml(t.category||'—')+(t.note?'<div class="note">'+escapeHtml(t.note)+'</div>':'')+'</td>';
+    row += '<td><span class="tag '+t.type+'">'+t.type+'</span></td>';
+    row += '<td class="amt num '+t.type+'">'+sign+fmt(t.amount)+'</td>';
+    row += '<td class="row-actions"><button class="ghost" data-edit="'+t.id+'">Edit</button><button class="danger" data-del="'+t.id+'">Delete</button></td>';
+    row += '</tr>';
+    return row;
+  }
+
+  function getFilteredTransactions(){
+    return state.transactions.filter(function(t){
+      if(state.filterType!=='all' && t.type!==state.filterType) return false;
+      if(state.filterAccount!=='all'){
+        var involved = (t.type==='transfer') ? (t.fromAccountId===state.filterAccount || t.toAccountId===state.filterAccount) : (t.accountId===state.filterAccount);
+        if(!involved) return false;
+      }
+      if(state.search){
+        var s = state.search.toLowerCase();
+        var hay = ((t.category||'')+' '+(t.note||'')).toLowerCase();
+        if(hay.indexOf(s)===-1) return false;
+      }
+      return true;
+    }).sort(function(a,b){ return b.date.localeCompare(a.date) || b._ts - a._ts; });
+  }
+
+  function escapeHtml(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function escapeAttr(s){ return escapeHtml(s); }
+
+  // ---- event wiring ----
+  function attachHandlers(){
+    var addAcctBtn = document.getElementById('add-account-btn');
+    if(addAcctBtn) addAcctBtn.onclick = function(){ openAccountModal(null); };
+
+    document.querySelectorAll('.acct-card').forEach(function(card){
+      card.onclick = function(){
+        var id = card.getAttribute('data-acct');
+        state.filterAccount = (state.filterAccount===id) ? 'all' : id;
+        render();
+      };
+    });
+
+    var filterAccount = document.getElementById('filter-account');
+    if(filterAccount) filterAccount.onchange = function(){ state.filterAccount = this.value; render(); };
+    var filterType = document.getElementById('filter-type');
+    if(filterType) filterType.onchange = function(){ state.filterType = this.value; render(); };
+    var searchBox = document.getElementById('search-box');
+    if(searchBox){
+      searchBox.oninput = function(){ state.search = this.value; render(); };
+      searchBox.focus();
+      searchBox.setSelectionRange(searchBox.value.length, searchBox.value.length);
+    }
+
+    var addTxnBtn = document.getElementById('add-txn-btn');
+    if(addTxnBtn) addTxnBtn.onclick = function(){ openTransactionModal(null); };
+
+    document.querySelectorAll('[data-edit]').forEach(function(btn){
+      btn.onclick = function(){ openTransactionModal(btn.getAttribute('data-edit')); };
+    });
+    document.querySelectorAll('[data-del]').forEach(function(btn){
+      btn.onclick = function(){
+        var id = btn.getAttribute('data-del');
+        state.transactions = state.transactions.filter(function(t){ return t.id!==id; });
+        saveData(); render();
+      };
+    });
+
+    var resetBtn = document.getElementById('reset-btn');
+    if(resetBtn) resetBtn.onclick = function(){
+      if(confirm('This will permanently delete all accounts and transactions. Continue?')){
+        state.accounts = []; state.transactions = [];
+        saveData(); render();
+      }
+    };
+  }
+
+  // ---- account modal ----
+  function openAccountModal(id){
+    var acc = id ? state.accounts.find(function(a){ return a.id===id; }) : null;
+    state.modal = {
+      kind:'account', editing:id,
+      name: acc ? acc.name : '',
+      openingBalance: acc ? acc.openingBalance : 0
+    };
+    render();
+  }
+
+  function renderAccountModal(m){
+    var html = '<div class="overlay" id="overlay"><div class="modal">';
+    html += '<h2>'+(m.editing?'Edit account':'New account')+'</h2>';
+    html += '<div class="field"><label>Account name</label><input type="text" id="m-name" placeholder="e.g. DK Enterprise" value="'+escapeAttr(m.name)+'"></div>';
+    html += '<div class="field"><label>Opening balance</label><input type="number" id="m-opening" value="'+m.openingBalance+'"></div>';
+    html += '<div class="modal-actions">';
+    if(m.editing){
+      html += '<button class="danger" id="m-delete">Delete account</button>';
+    } else { html += '<span></span>'; }
+    html += '<div class="right"><button class="secondary" id="m-cancel">Cancel</button><button id="m-save">Save</button></div>';
+    html += '</div></div></div>';
+    return html;
+  }
+
+  // ---- transaction modal ----
+  function openTransactionModal(id){
+    var t = id ? state.transactions.find(function(x){ return x.id===id; }) : null;
+    var defaultAcct = state.filterAccount!=='all' ? state.filterAccount : (state.accounts[0] && state.accounts[0].id);
+    state.modal = {
+      kind:'transaction', editing:id,
+      type: t ? t.type : 'expense',
+      date: t ? t.date : todayStr(),
+      accountId: t ? t.accountId : defaultAcct,
+      fromAccountId: t ? t.fromAccountId : defaultAcct,
+      toAccountId: t ? t.toAccountId : (state.accounts[1] ? state.accounts[1].id : defaultAcct),
+      category: t ? t.category : '',
+      amount: t ? t.amount : '',
+      note: t ? t.note : ''
+    };
+    render();
+  }
+
+  var CATEGORIES = {
+    income: ['Sales','Service revenue','Rental income','Commission','Interest','Other income'],
+    expense: ['Purchases / inventory','Salaries','Rent','Utilities','Marketing','Transport','Fees & taxes','Maintenance','Other expense'],
+    transfer: []
+  };
+
+  function renderTransactionModal(m){
+    var html = '<div class="overlay" id="overlay"><div class="modal">';
+    html += '<h2>'+(m.editing?'Edit transaction':'New transaction')+'</h2>';
+    html += '<div class="type-toggle">';
+    ['income','expense','transfer'].forEach(function(ty){
+      html += '<button type="button" class="type-btn '+ty+(m.type===ty?' active '+ty:'')+'" data-type="'+ty+'">'+ty.charAt(0).toUpperCase()+ty.slice(1)+'</button>';
+    });
+    html += '</div>';
+
+    html += '<div class="field"><label>Date</label><input type="date" id="m-date" value="'+m.date+'"></div>';
+
+    if(m.type==='transfer'){
+      html += '<div class="field-row">';
+      html += '<div class="field"><label>From account</label><select id="m-from">'+state.accounts.map(function(a){return '<option value="'+a.id+'"'+(a.id===m.fromAccountId?' selected':'')+'>'+escapeHtml(a.name)+'</option>';}).join('')+'</select></div>';
+      html += '<div class="field"><label>To account</label><select id="m-to">'+state.accounts.map(function(a){return '<option value="'+a.id+'"'+(a.id===m.toAccountId?' selected':'')+'>'+escapeHtml(a.name)+'</option>';}).join('')+'</select></div>';
+      html += '</div>';
+    } else {
+      html += '<div class="field"><label>Account</label><select id="m-account">'+state.accounts.map(function(a){return '<option value="'+a.id+'"'+(a.id===m.accountId?' selected':'')+'>'+escapeHtml(a.name)+'</option>';}).join('')+'</select></div>';
+      html += '<div class="field"><label>Category</label><input type="text" id="m-category" list="cat-list" value="'+escapeAttr(m.category)+'" placeholder="e.g. Sales, Rent…">';
+      html += '<datalist id="cat-list">'+CATEGORIES[m.type].map(function(c){return '<option value="'+c+'">';}).join('')+'</datalist></div>';
+    }
+
+    html += '<div class="field"><label>Amount (₹)</label><input type="number" id="m-amount" value="'+m.amount+'" placeholder="0"></div>';
+    html += '<div class="field"><label>Note (optional)</label><input type="text" id="m-note" value="'+escapeAttr(m.note)+'" placeholder="Add a short note"></div>';
+
+    html += '<div class="modal-actions">';
+    if(m.editing){
+      html += '<button class="danger" id="m-delete">Delete</button>';
+    } else { html += '<span></span>'; }
+    html += '<div class="right"><button class="secondary" id="m-cancel">Cancel</button><button id="m-save">Save</button></div>';
+    html += '</div></div></div>';
+    return html;
+  }
+
+  function renderModal(){
+    var container = document.createElement('div');
+    var m = state.modal;
+    container.innerHTML = m.kind==='account' ? renderAccountModal(m) : renderTransactionModal(m);
+    document.getElementById('app').appendChild(container.firstChild);
+
+    var overlay = document.getElementById('overlay');
+    overlay.onclick = function(e){ if(e.target.id==='overlay'){ state.modal=null; render(); } };
+
+    var cancelBtn = document.getElementById('m-cancel');
+    if(cancelBtn) cancelBtn.onclick = function(){ state.modal=null; render(); };
+
+    if(m.kind==='account'){
+      document.getElementById('m-save').onclick = function(){
+        var name = document.getElementById('m-name').value.trim();
+        var opening = parseFloat(document.getElementById('m-opening').value) || 0;
+        if(!name){ alert('Enter an account name.'); return; }
+        if(m.editing){
+          var acc = state.accounts.find(function(a){ return a.id===m.editing; });
+          acc.name = name; acc.openingBalance = opening;
+        } else {
+          state.accounts.push({ id: uid(), name: name, openingBalance: opening, color: accountColor(state.accounts.length) });
+        }
+        state.modal = null; saveData(); render();
+      };
+      var delBtn = document.getElementById('m-delete');
+      if(delBtn) delBtn.onclick = function(){
+        if(confirm('Delete this account? Its transactions will remain but show as unlinked.')){
+          state.accounts = state.accounts.filter(function(a){ return a.id!==m.editing; });
+          state.modal = null; saveData(); render();
+        }
+      };
+    } else {
+      document.querySelectorAll('.type-btn').forEach(function(btn){
+        btn.onclick = function(){ m.type = btn.getAttribute('data-type'); render(); };
+      });
+      document.getElementById('m-save').onclick = function(){
+        var date = document.getElementById('m-date').value || todayStr();
+        var amount = parseFloat(document.getElementById('m-amount').value);
+        if(!amount || amount<=0){ alert('Enter a valid amount.'); return; }
+        var note = document.getElementById('m-note').value.trim();
+        var payload = { id: m.editing || uid(), type: m.type, date: date, amount: amount, note: note, _ts: Date.now() };
+        if(m.type==='transfer'){
+          var from = document.getElementById('m-from').value;
+          var to = document.getElementById('m-to').value;
+          if(from===to){ alert('Choose two different accounts.'); return; }
+          payload.fromAccountId = from; payload.toAccountId = to; payload.category = 'Transfer';
+        } else {
+          payload.accountId = document.getElementById('m-account').value;
+          payload.category = document.getElementById('m-category').value.trim() || 'Uncategorized';
+        }
+        if(m.editing){
+          var idx = state.transactions.findIndex(function(t){ return t.id===m.editing; });
+          state.transactions[idx] = Object.assign({}, state.transactions[idx], payload);
+        } else {
+          state.transactions.push(payload);
+        }
+        state.modal = null; saveData(); render();
+      };
+      var delBtn2 = document.getElementById('m-delete');
+      if(delBtn2) delBtn2.onclick = function(){
+        state.transactions = state.transactions.filter(function(t){ return t.id!==m.editing; });
+        state.modal = null; saveData(); render();
+      };
+    }
+  }
+
+  loadData();
+})();
+</script>
+</body>
+</html>
